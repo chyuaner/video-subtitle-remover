@@ -40,16 +40,28 @@ class SubtitleDetect:
 
     @cached_property
     def text_detector(self):
+        import ctypes
+        import os
+        # preload libnvjpeg.so.12 to prevent ultra_infer initialization failure
+        try:
+            for path in sys.path:
+                nvjpeg_path = os.path.join(path, 'nvidia', 'nvjpeg', 'lib', 'libnvjpeg.so.12')
+                if os.path.exists(nvjpeg_path):
+                    ctypes.CDLL(nvjpeg_path, mode=ctypes.RTLD_GLOBAL)
+                    break
+        except Exception:
+            pass
         import paddle
         paddle.disable_signal_handler()
         from paddleocr import TextDetection
         hardware_accelerator = HardwareAccelerator.instance()
         onnx_providers = hardware_accelerator.onnx_providers
         model_config = ModelConfig()
+        device = "gpu" if hardware_accelerator.has_cuda() else "cpu"
         return TextDetection(
             model_name=model_config.DET_MODEL_NAME,
             model_dir=model_config.DET_MODEL_DIR,
-            device="cpu",
+            device=device,
             enable_hpi=len(onnx_providers) > 0,
         )
 
