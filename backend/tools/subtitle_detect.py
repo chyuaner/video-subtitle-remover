@@ -51,6 +51,28 @@ class SubtitleDetect:
                     break
         except Exception:
             pass
+        # Pre-register all DLL paths for NVIDIA packages to fix WinError 127 in Windows
+        if sys.platform == 'win32':
+            paths_to_search = list(sys.path)
+            for prefix in [sys.exec_prefix, sys.base_exec_prefix]:
+                if prefix:
+                    paths_to_search.append(os.path.join(prefix, 'Lib', 'site-packages'))
+            
+            for path in paths_to_search:
+                try:
+                    if path:
+                        abs_path = os.path.abspath(path)
+                        if os.path.isdir(abs_path):
+                            nvidia_path = os.path.join(abs_path, 'nvidia')
+                            if os.path.exists(nvidia_path):
+                                for root, dirs, files in os.walk(nvidia_path):
+                                    if any(f.endswith('.dll') for f in files):
+                                        try:
+                                            os.add_dll_directory(root)
+                                        except Exception:
+                                            pass
+                except Exception:
+                    pass
         import paddle
         paddle.disable_signal_handler()
         from paddleocr import TextDetection
@@ -62,7 +84,7 @@ class SubtitleDetect:
             model_name=model_config.DET_MODEL_NAME,
             model_dir=model_config.DET_MODEL_DIR,
             device=device,
-            enable_hpi=len(onnx_providers) > 0,
+            enable_hpi=False,
         )
 
     def detect_subtitle(self, img):
